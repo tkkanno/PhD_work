@@ -17,7 +17,8 @@ def Clean_data(data_file, label_file, label1, label2):
     dat_met = dat.ix[label2]
     dat_prim = dat.ix[label1]
     dat, dat_sig = Ttest(dat_met, dat_prim)
-    return dat, dat sig
+    return dat, dat_sig
+    
 def Ttest(data1, data2):
     p_values =[]
     fold_change = []
@@ -28,7 +29,8 @@ def Ttest(data1, data2):
             fold_change.append(data2[i].mean()/data1[i].mean())
             print("gene:%s p= %.3f, fc =%.3f" %(i, p[1], data2[i].mean()/data1[i].mean()))
         except TypeError:
-            next
+	    print ("TypeError in gene %s, moving on" %i)
+	    next
          
     analysis = pd.DataFrame({'p_value':p_values,'fold_change':fold_change})
  
@@ -36,9 +38,9 @@ def Ttest(data1, data2):
  
     analysis['fdr_adjusted_pvalues'] =  temp[1]
  
-    analysis['log2_foldchange']=np.log2(analysis['fold_change'])
+    #analysis['log2_foldchange']=np.log2(analysis['fold_change'])
  
-    analysis['log_qvalue'] = -(np.log(analysis['fdr_adjusted_pvalues']))
+    #analysis['log_qvalue'] = -(np.log(analysis['fdr_adjusted_pvalues']))
  
     analysis.index = data1.columns
     print("there are %i genes in the analysis" %(analysis.shape[0]))
@@ -73,12 +75,22 @@ def select_genes(df, genes):
     print("%i of %i genes found in the microarray" %(x.shape[1], len(genes)))
     print("%i duplicate genes found" %(a1-x.shape[1]))
     return x    
+    
+def Z_score_gene(data):
+  x = data.mean()
+  std = data.std()
+  data = (x-data)/std
+  
+  
 #get genes of interest
 genes = pd.read_csv('new_genes.csv', header =None)
 genes = genes.drop(0,1)
 genes = np.array(genes)
 genes = genes.reshape(genes.shape[0],)
-genes.tolist()  
+print ("%i probes" %genes.shape[0])
+genes = np.unique(genes)
+print ("%i unique genes" %genes.shape[0])
+genes = genes.tolist()  
  
 #clean up talentov  
 tal = pd.read_csv('Talentov_ready.txt', sep = '\t')
@@ -165,7 +177,26 @@ rik_prim = rik.ix['Primary Melanoma']
 rik, rik_sig = Ttest(rik_met, rik_prim)
 rik.to_csv('rik_all.csv')
 rik_sig.to_csv('rik_sig.csv')
+
+tcg = pd.read_csv('tcga_part1', sep = '\t')
+tcg2 = pd.read_csv('tcga_part2', sep ='\t')
+patients = pd.read_csv('tcga_patients.csv')
+tcg=tcg.T
+tcg2 = tcg2.T
+t = pd.concat([tcg,tcg2], 1)
+tcg = t
+tcg.columns  = tcg.ix['COMMON']
+tcg  = tcg.drop(tcg.index[0:2])
+patients.index = patients.Patient
+patients = patients.sort_index()
+tcg = tcg.sort_index()
+tcg = tcg.T
+tcg = tcg.drop('Unnamed: 356',1)
+tcg = tcg.T
+tcg.index = patients.Location
+tcg=  tcg.apply(pd.to_numeric)
+tcg =tcg.T.groupby(level=0).first().T
+t_met  =tcg.ix['metastasis']
+t_prime = tcg.ix['primary tumour']
+t_all, t_sig = Ttest(t_prime, t_met)
 #y =y.T.groupby(level=0).first().T
- 
-sns.set_context("notebook", font_scale =1.5)
-ax = sns.lmplot('log2_foldchange', 'log_qvalue', data =test, fit_reg = False)
