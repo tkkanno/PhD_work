@@ -1,0 +1,171 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from scipy.stats import ttest_ind
+import statsmodels.sandbox.stats.multicomp as mcp
+def Clean_data(data_file, label_file, label1, label2):
+    dat = pd.read_csv(data_file, sep = '\t')
+    dat = dat.T
+    x =dat.loc['Gene Symbol']
+    dat.columns = x
+    dat = dat.drop(dat.index[0:2])
+    dat_labels =pd.read_csv(label_file, header = None)
+    dat_labels = pd.Series(dat_labels[0])
+    dat_labels = dat_labels.tolist()
+    dat.index =dat_labels
+    dat = select_genes(dat, genes)
+    dat_met = dat.ix[label2]
+    dat_prim = dat.ix[label1]
+    dat, dat_sig = Ttest(dat_met, dat_prim)
+    return dat, dat sig
+def Ttest(data1, data2):
+    p_values =[]
+    fold_change = []
+    for i in data1:
+        try:
+            p = ttest_ind(data1[i], data2[i], nan_policy = 'omit')
+            p_values.append(p[1])
+            fold_change.append(data2[i].mean()/data1[i].mean())
+            print("gene:%s p= %.3f, fc =%.3f" %(i, p[1], data2[i].mean()/data1[i].mean()))
+        except TypeError:
+            next
+         
+    analysis = pd.DataFrame({'p_value':p_values,'fold_change':fold_change})
+ 
+    temp =mcp.multipletests(analysis['p_value'], alpha = 0.05, method = 'fdr_bh')
+ 
+    analysis['fdr_adjusted_pvalues'] =  temp[1]
+ 
+    analysis['log2_foldchange']=np.log2(analysis['fold_change'])
+ 
+    analysis['log_qvalue'] = -(np.log(analysis['fdr_adjusted_pvalues']))
+ 
+    analysis.index = data1.columns
+    print("there are %i genes in the analysis" %(analysis.shape[0]))
+    analysis_sig = analysis[analysis.fdr_adjusted_pvalues < 0.05]
+    print("there are %i signficant genes" %(analysis_sig.shape[0]))
+    a1 = analysis_sig[analysis_sig.fold_change >1.5]
+    a2 = analysis_sig[analysis_sig.fold_change < (2.0/3.0)]
+    analysis_sig = pd.concat((a1,a2))
+    print("there are %i signficant genes with large fold change" %analysis_sig.shape[0])
+    return analysis, analysis_sig
+     
+def select_genes(df, genes):
+    x = []
+    for i in genes:
+        try:
+            #select primer with largest signal
+            try:
+                if df[i].shape[1]>1:
+                    a = df[i].mean()
+                    b = a.max()
+                    d = df[i].ix[:,a==b]
+                    x.append(d)
+            except IndexError:
+                x.append(df[i])
+        except KeyError:
+            print (i, " isn't found in the dataframe.")
+            next
+    x = pd.concat(x,1)
+    #get rid of duplicates
+    a1 = x.shape[1]
+    x = x.T.groupby(level =0).first().T
+    print("%i of %i genes found in the microarray" %(x.shape[1], len(genes)))
+    print("%i duplicate genes found" %(a1-x.shape[1]))
+    return x    
+#get genes of interest
+genes = pd.read_csv('new_genes.csv', header =None)
+genes = genes.drop(0,1)
+genes = np.array(genes)
+genes = genes.reshape(genes.shape[0],)
+genes.tolist()  
+ 
+#clean up talentov  
+tal = pd.read_csv('Talentov_ready.txt', sep = '\t')
+tal  = tal.T
+x = tal.loc['Gene Symbol']
+tal.columns = x
+tal =tal.drop(tal.index[[0,1]])
+tal_index = pd.read_csv('tal_index.csv', header =None)
+tal_index = pd.Series(tal_index[0])
+tal_index = tal_index.tolist()
+tal.index = tal_index
+tal = select_genes(tal,genes)
+nevus = tal.ix['Nevus']
+melanoma = tal.ix['Melanoma']
+tal, tal_sig = Ttest(nevus,melanoma)
+tal.to_csv('talentov_all.csv')
+tal_sig.to_csv('talentov_signficant.csv')
+ 
+ 
+ 
+#clean up avery. it throws different datatype error
+avery = pd.read_csv('Avery_ready1.csv')
+avery = avery.T
+avery.columns = avery.ix[1]
+avery = avery.drop(avery.index[0:2])
+av_labels = pd.read_csv('avery_labels.csv', header = None)
+av_labels = pd.Series(av_labels[0])
+av_labels = av_labels.tolist()
+avery.index= av_labels
+avery = select_genes(avery,genes)
+#split data into conditions for analysis
+melanocyte = avery.ix['Melanocyte']
+avery_melanoma = avery.ix['Melanoma']
+av, av_sig = Ttest(melanocyte, avery_melanoma)
+av.to_csv('avery_all.csv')
+av_sig.to_csv('avery_sign.csv')
+ 
+#clean up kabbarah
+kab = pd.read_csv('Hoe_ready.txt', sep = '\t')
+kab = kab.T
+x =kab.loc['Gene Symbol']
+kab.columns = x
+kab = kab.drop(kab.index[0:2])
+kab_labels =pd.read_csv('kab_labels.csv', header = None)
+kab_labels = pd.Series(kab_labels[0])
+kab_labels = kab_labels.tolist()
+kab.index =kab_labels
+kab = select_genes(kab, genes)
+kab_met = kab.ix['Metastatic Melanoma']
+kab_prim = kab.ix['Primary Melanoma']
+kab, kab_sig = Ttest(kab_met, kab_prim)
+kab.to_csv('kabbarrah_all.csv')
+kab_sig.to_csv('kab_sig.csv')
+#clean up xu
+xu = pd.read_csv('xu_ready.txt', sep = '\t')
+xu = xu.T
+x =xu.loc['Gene Symbol']
+xu.columns = x
+xu = xu.drop(xu.index[0:2])
+xu_labels =pd.read_csv('xu_labels.csv', header = None)
+xu_labels = pd.Series(xu_labels[0])
+xu_labels = xu_labels.tolist()
+xu.index =xu_labels
+xu = select_genes(xu, genes)
+xu_met = xu.ix['metastasis']
+xu_prim = xu.ix['primary']
+xu, xu_sig = Ttest(xu_met, xu_prim)
+xu.to_csv('xu_all.csv')
+xu_sig.to_csv('xu_sig.csv')
+ 
+#Riker stuff
+rik = pd.read_csv('Riker_ready.txt', sep = '\t')
+rik = rik.T
+x =rik.loc['Gene Symbol']
+rik.columns = x
+rik = rik.drop(rik.index[0:2])
+rik_labels =pd.read_csv('rik_labels.csv', header = None)
+rik_labels = pd.Series(rik_labels[0])
+rik_labels = rik_labels.tolist()
+rik.index =rik_labels
+rik = select_genes(rik, genes)
+rik_met = rik.ix['Metastatic Melanoma']
+rik_prim = rik.ix['Primary Melanoma']
+rik, rik_sig = Ttest(rik_met, rik_prim)
+rik.to_csv('rik_all.csv')
+rik_sig.to_csv('rik_sig.csv')
+#y =y.T.groupby(level=0).first().T
+ 
+sns.set_context("notebook", font_scale =1.5)
+ax = sns.lmplot('log2_foldchange', 'log_qvalue', data =test, fit_reg = False)
