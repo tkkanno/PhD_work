@@ -1,0 +1,40 @@
+plot_expression<- function(x, y) {
+  plot(y, x, col=tumor_type, pch=19)
+  line <- lm(x~rock2)
+  abline(line)
+  legend("topright", c("Primary", "Non-Primary"), col=tumor_type, pch=19)
+  print(summary(line))
+  return(line)
+}
+
+plot_expression_type<- function(x){
+    bxplot(x ~ tumor_type, data = data, outline = FALSE, horizontal = TRUE)
+    beeswarm(x ~ tumor_type, data = data, 
+             col = "red", alpha = 0.3, pch = 19, horizontal = TRUE, add = TRUE, outline = TRUE, bg = "#00000050")  
+}
+
+test_tumor_type<-function(x, y){
+  plist <- vector()
+  meanlist <- vector()
+  for(i in 3:200){
+    testresult <- t.test(x[[i]]~y)[["p.value"]]
+    meanresult <- t.test(x[[i]]~y)[["estimate"]]
+    plist<- append(plist, testresult)
+    meanlist <- append(meanlist, meanresult)
+  }
+  return(plist, meanlist)
+}
+
+test_tumor_means<-function(x, y){
+  meanlist <- vector()
+  meanlistprimary <- vector()
+  meanlistsecondary <-vector()
+  for(i in 3:200){
+    meanresultone <- t.test(x[[i]]~y)[["estimate"]][[1]]
+    meanresulttwo <-t.test(x[[i]]~y)[["estimate"]][[2]]
+    meanlistprimary <- append(meanlistprimary, meanresultone)
+    meanlistsecondary <- append(meanlistsecondary, meanresulttwo)
+  }
+  meanlist =data.frame(meanlistprimary, meanlistsecondary)
+  return(meanlist)
+}
