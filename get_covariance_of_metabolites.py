@@ -10,7 +10,7 @@ print """Make sure the csv file with the metabolite information you want to extr
 #metabolite_list = raw_input('metabolites csv file: ')
 
 directory = raw_input("Directory please: ")
-datafile = raw_input("experiment labels: ")
+datafile = raw_input("pls output file extension name: ")
 metabolite_list = raw_input("metabolite list: ")
 
 data = np.load(directory+datafile+'backscaled_loadings.npy')
