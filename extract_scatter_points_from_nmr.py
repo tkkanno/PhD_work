@@ -30,8 +30,8 @@ def scale_pareto(data):
     data = np.nan_to_num(data)
     return data
 print "This script will take the pls input data and find the peak of a given assigned metabolites spreadsheet"
-spread = 0.003
-print "It will search within a range of %.3f ppm. If you want to change this, go into the script"%(spread)
+print "It will require: \n 1. Directory \n 2. Text file with metabolite names and ppms \n 3. pls input file "
+
 print "this script may require iterations to refine the search space for peaks"
 directory = raw_input("Directory please: ")
 metabolite_list = raw_input("metabolites ppm list: ")
@@ -41,6 +41,7 @@ datafile = raw_input("pls input: ")
 metdata = pd.read_csv(directory+metabolite_list)
 mets= metdata['Metabolite']
 data = np.loadtxt(directory+datafile)
+spread = float(raw_input("how large a spread do you want to search for (in ppm)? \n for liquid nmr i recommend 0.0075. \n for hr-mas nmr probably something bigger.\n "))
 clss = data[:,0]
 data = data[:,1:]
 clss = clss[1:]
@@ -68,10 +69,13 @@ for i in datlist:
   idx = np.argmin(np.abs(ppm-i))
   idxmin =np.argmin(np.abs(ppm-(i-spread)))
   idxmax = np.argmin(np.abs(ppm-(i+spread)))
-  sppm= ppm[idxmax:idxmin]
-  slice_to_take = mean_spect[idxmax:idxmin].max()
+  if idxmax - idxmin == 0:
+      slice_to_take = mean_spect[idx].max()
+  else:
+    sppm= ppm[idxmax:idxmin]
+    slice_to_take = mean_spect[idxmax:idxmin].max()
   b = np.where(mean_spect == slice_to_take)
-  #take slices of data where peak is highest
+  #take slices of data where peak is highesti
   if len(b)==1:
     b = b[0][0]
     idx = b
